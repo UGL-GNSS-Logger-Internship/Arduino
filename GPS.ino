@@ -14,7 +14,7 @@ void setup() {
 
   attachInterrupt(digitalPinToInterrupt(PPS_PIN), handlePPS, RISING);
 
-  Serial.print("GPS module initialized.");
+  Serial.println("GPS module initialized.");
 }
 
 void loop() {
@@ -45,7 +45,8 @@ void printGPSData() {
     double Longitude = gps.location.lng();
     // Serial.println(Longitude, 6);
     dec2dms(Longitude);
-    // converter(Latitude, Longitude);
+    Serial.println("");
+    converter(Latitude, Longitude);
   } else {
     Serial.println("Location not available");
   }
@@ -105,11 +106,12 @@ void dec2dms(double dec) {
   double seconds = ((abs(dec - degrees) * 60) - minutes) * 60;
   
   Serial.print(degrees);
-  Serial.print((char)248);
+  // Serial.print((char)248);
+  Serial.print("\u00B0");
   Serial.print(minutes);
-  Serial.print("' ");
-  Serial.print(seconds, 6);
-  Serial.println("\"");
+  Serial.print("'");
+  Serial.print(seconds, 3);
+  Serial.print("\"");
 }
 
 void converter(double Latitude, double Longitude) {
@@ -194,7 +196,7 @@ void converter(double Latitude, double Longitude) {
   double Northing = SumNK0 + FalseOriginN;
 
   Serial.print("Easting: ");
-  Serial.print(Easting, 10);
-  Serial.print("Northing: ");
-  Serial.println(Northing, 10);
+  Serial.print(Easting, 3);
+  Serial.print(", Northing: ");
+  Serial.println(Northing, 3);
 }
