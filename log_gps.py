@@ -1,9 +1,9 @@
 import serial
 import time
 
-arduino_port = "COM3"
+arduino_port = "COM3" # Change to your port
 baud_rate = 9600
-output_file = f"GPS_Log_{time.strftime('%d%m%Y_%H%M%S')}.txt"
+output_file = f"logs/GPS_Log_{time.strftime('%d%m%Y_%H%M%S')}.txt"
 
 print(f"Connecting to {arduino_port} at {baud_rate} baud.")
 ser = serial.Serial(arduino_port, baud_rate)
