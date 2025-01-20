@@ -10,18 +10,15 @@ TinyGPSPlus gps;
 #define PPS_PIN 38
 
 u8 ubxCfgRate[] {
-  0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77,
-  0xB5,0x62,0x05,0x01,0x02,0x00,0x06,0x08,0x16,0x3F,
-  0xB5,0x62,0x06,0x08,0x00,0x00,0x0E,0x30,
-  0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77,
-  0xB5,0x62,0x05,0x01,0x02,0x00,0x06,0x08,0x16,0x3F                    
+  0xB5,0x62,0x06,0x08,0x06,0x00,0xE8,0x03,0x01,0x00,0x01,0x00,0x01,0x39, // output@1Hz
+  // 0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77, // output@2Hz
 };
 
 void setup() {
   Serial.begin(9600);    // For debugging (PC communication)
   Serial1.begin(9600);   // For GPS communication
   Serial3.begin(9600);   // For Arduino - Raspberry Pi communication
-   
+
   pinMode(PPS_PIN, INPUT);
 
   attachInterrupt(digitalPinToInterrupt(PPS_PIN), handlePPS, RISING);
@@ -35,13 +32,13 @@ void loop() {
   while (Serial1.available() > 0) {
     char c = Serial1.read();
     // Serial.print(c);
-    gps.encode(c); 
+    gps.encode(c);
 
     if (gps.location.isUpdated()) {
       // Print GPS data
       printGPSData();
     }
-  
+
     // if (Serial3.available() > 0) {
     //   String incomingByte = Serial3.readStringUntil('\n');  // Read one byte at a time
     //   Serial.print("Received from Serial3: ");
@@ -49,7 +46,7 @@ void loop() {
     // }
   }
   // delay(1000);  // Small delay for better serial processing
-  
+
 }
 
 void handlePPS() {
@@ -131,7 +128,7 @@ void printGPSData() {
     Serial.println("Satellite data not available");
   }
 
-  Serial.println(); 
+  Serial.println();
   Serial3.print(Date);
   Serial3.print(Time);
   Serial3.print(',');
@@ -149,10 +146,10 @@ void printGPSData() {
 }
 
 void dec2dms(double dec) {
-  int degrees = int(dec);  
+  int degrees = int(dec);
   int minutes = int(abs(dec - degrees) * 60);
   double seconds = ((abs(dec - degrees) * 60) - minutes) * 60;
-  
+
   Serial.print(degrees);
   // Serial.print((char)248);
   Serial.print("\u00B0");
