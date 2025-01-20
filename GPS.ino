@@ -1,20 +1,33 @@
 #include <TinyGPSPlus.h>
 #include <math.h>
+#include <stdint.h>
 
+typedef uint32_t u32;
+typedef uint8_t  u8;
 TinyGPSPlus gps;
 #define GPS_TX_PIN 18
 #define GPS_RX_PIN 19
 #define PPS_PIN 38
 
+u8 ubxCfgRate[] {
+  0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77,
+  0xB5,0x62,0x05,0x01,0x02,0x00,0x06,0x08,0x16,0x3F,
+  0xB5,0x62,0x06,0x08,0x00,0x00,0x0E,0x30,
+  0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77,
+  0xB5,0x62,0x05,0x01,0x02,0x00,0x06,0x08,0x16,0x3F                    
+};
+
 void setup() {
   Serial.begin(9600);    // For debugging (PC communication)
   Serial1.begin(9600);   // For GPS communication
-
+  Serial3.begin(9600);   // For Arduino - Raspberry Pi communication
+   
   pinMode(PPS_PIN, INPUT);
 
   attachInterrupt(digitalPinToInterrupt(PPS_PIN), handlePPS, RISING);
-
+  Serial1.write(ubxCfgRate, sizeof(ubxCfgRate));
   Serial.println("GPS module initialized.");
+  Serial3.write("GPS module initialized.");
 }
 
 void loop() {
@@ -28,39 +41,52 @@ void loop() {
       // Print GPS data
       printGPSData();
     }
+  
+    // if (Serial3.available() > 0) {
+    //   String incomingByte = Serial3.readStringUntil('\n');  // Read one byte at a time
+    //   Serial.print("Received from Serial3: ");
+    //   Serial.println(incomingByte);
+    // }
   }
+  // delay(1000);  // Small delay for better serial processing
+  
 }
 
 void handlePPS() {
   Serial.println("PPS signal");
 }
 void printGPSData() {
+  double Latitude, Longitude, Easting, Northing;
   // Print latitude and longitude
   if (gps.location.isValid()) {
     Serial.print("Latitude: ");
-    double Latitude = gps.location.lat();
-    // Serial.print(Latitude, 6);
+    Latitude = gps.location.lat();
     dec2dms(Latitude);
     Serial.print(", Longitude: ");
-    double Longitude = gps.location.lng();
-    // Serial.println(Longitude, 6);
+    Longitude = gps.location.lng();
     dec2dms(Longitude);
     Serial.println("");
-    converter(Latitude, Longitude);
+    converter(Latitude, Longitude, Easting, Northing);
   } else {
+    Latitude = NULL;
+    Longitude = NULL;
+    Easting = NULL;
+    Northing = NULL;
     Serial.println("Location not available");
   }
 
   // Print date and time
+  u32 Date, Time;
   if (gps.date.isValid() && gps.time.isValid()) {
     Serial.print("Date: ");
+    Date = gps.date.value();
     Serial.print(gps.date.month());
     Serial.print("/");
     Serial.print(gps.date.day());
     Serial.print("/");
     Serial.println(gps.date.year());
-
     Serial.print("Time: ");
+    Time = gps.time.value();
     Serial.print(gps.time.hour());
     Serial.print(":");
     Serial.print(gps.time.minute());
@@ -68,24 +94,32 @@ void printGPSData() {
     Serial.print(gps.time.second());
     Serial.println(" UTC");
   } else {
+    Date = NULL;
+    Time = NULL;
     Serial.println("Date/Time not available");
   }
 
   // Print altitude
+  double Altitude;
   if (gps.altitude.isValid()) {
     Serial.print("Altitude: ");
-    Serial.print(gps.altitude.meters());
+    Altitude = gps.altitude.meters();
+    // Serial.print(Altitude);
     Serial.println(" meters");
   } else {
+    Altitude = NULL;
     Serial.println("Altitude not available");
   }
 
   // Print speed
+  double Speed;
   if (gps.speed.isValid()) {
     Serial.print("Speed: ");
-    Serial.print(gps.speed.kmph());
+    Speed = gps.speed.kmph();
+    Serial.print(Speed);
     Serial.println(" km/h");
   } else {
+    Speed = NULL;
     Serial.println("Speed not available");
   }
 
@@ -98,6 +132,20 @@ void printGPSData() {
   }
 
   Serial.println(); 
+  Serial3.print(Date);
+  Serial3.print(Time);
+  Serial3.print(',');
+  Serial3.print(Easting);
+  Serial3.print(',');
+  Serial3.print(Northing);
+  Serial3.print(',');
+  Serial3.print(Altitude);
+  Serial3.print(',');
+  Serial3.print(Latitude);
+  Serial3.print(',');
+  Serial3.print(Longitude);
+  Serial3.print(',');
+  Serial3.println(Altitude);
 }
 
 void dec2dms(double dec) {
@@ -114,7 +162,7 @@ void dec2dms(double dec) {
   Serial.print("\"");
 }
 
-void converter(double Latitude, double Longitude) {
+void converter(double Latitude, double Longitude, double &Easting, double &Northing) {
   const double a = 6378137.000;
   const double FalseOriginE = 500000.0000;
   const double FalseOriginN = 10000000.0000;
@@ -183,7 +231,7 @@ void converter(double Latitude, double Longitude) {
 
   double SumE = E1 + E2 + E3 + E4;
   double SumEK0 = K0 * SumE;
-  double Easting = SumEK0 + FalseOriginE;
+  Easting = SumEK0 + FalseOriginE;
 
   // Northing
   double N1 = Nu * SinLat1 * omega2 * CosLat1 / 2;
@@ -193,7 +241,7 @@ void converter(double Latitude, double Longitude) {
 
   double SumN = M + N1 + N2 + N3 + N4;
   double SumNK0 = K0 * SumN;
-  double Northing = SumNK0 + FalseOriginN;
+  Northing = SumNK0 + FalseOriginN;
 
   Serial.print("Easting: ");
   Serial.print(Easting, 3);
