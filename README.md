@@ -2,6 +2,12 @@
 
 Install `TinyGPSPlus` library in Arduino IDE before using `GPS.ino`.
 
+
+The structure of the message output via serial3 is:
+```
+Timestamp, Easting, Northing, Altitude, Latitude, Longitude, Altitude
+```
+
 # Log GPS info
 
 Install `pyserial` package in Python before using `log_gps.py`.
