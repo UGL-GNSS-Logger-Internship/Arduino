@@ -1,3 +1,24 @@
+/**
+  @file GPS.ino
+  @date 21/01/2025
+  @version 1.0
+  @brief This file contains the source code for the GPS module.
+
+  This file contains the source code for the GPS module. The GPS module reads data from the GPS module
+  and sends the data to the Raspberry Pi.
+
+  The GPS module reads the following data from the GPS module:
+  - Latitude
+  - Longitude
+  - Altitude
+  - Date
+  - Time
+  - Speed
+  - Satellites in view
+
+  UBX-CFG-RATE message is sent to the GPS module to set the output rate.
+  The GPS module sends the data to the Raspberry Pi via Serial3.
+*/
 #include <TinyGPSPlus.h>
 #include <math.h>
 #include <stdint.h>
@@ -9,11 +30,15 @@ TinyGPSPlus gps;
 #define GPS_RX_PIN 19
 #define PPS_PIN 38
 
+/* UBX-CFG-RATE */
 u8 ubxCfgRate[] {
   0xB5,0x62,0x06,0x08,0x06,0x00,0xE8,0x03,0x01,0x00,0x01,0x00,0x01,0x39, // output@1Hz
   // 0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77, // output@2Hz
 };
 
+/**
+  @brief Setup function for the Arduino.
+*/
 void setup() {
   Serial.begin(9600);    // For debugging (PC communication)
   Serial1.begin(9600);   // For GPS communication
@@ -27,6 +52,12 @@ void setup() {
   Serial3.write("GPS module initialized.");
 }
 
+/**
+  @brief Main loop of the program.
+
+  This function reads data from the GPS module and sends the data to the Raspberry Pi.
+  The function also reads data from the Raspberry Pi and sends the data to the GPS module.
+*/
 void loop() {
   // Read data from GPS
   while (Serial1.available() > 0) {
@@ -39,11 +70,15 @@ void loop() {
       printGPSData();
     }
 
+    static unsigned long lastCheck = 0;
     if (Serial3.available() > 0) {
       String incomingByte = Serial3.readStringUntil('\n');  // Read one byte at a time
       Serial.print("Received from Serial3: ");
       Serial.println(incomingByte);
-      delay(400);
+      lastCheck = millis();
+    }
+    if (millis() - lastCheck >= 400) {
+      lastCheck = millis();
     }
   }
 }
@@ -51,6 +86,13 @@ void loop() {
 void handlePPS() {
   Serial.println("PPS signal");
 }
+
+/**
+  @brief Prints GPS data to the Serial monitor.
+
+  This function prints the GPS data (latitude, longitude, date, time, altitude, speed, and satellites in view)
+  to the Serial monitor. The function also sends the GPS data to the Raspberry Pi via Serial3.
+*/
 void printGPSData() {
   double Latitude, Longitude, Easting, Northing;
   // Print latitude and longitude
@@ -146,6 +188,14 @@ void printGPSData() {
   Serial3.println(Altitude);
 }
 
+/**
+  @brief Converts decimal degrees to degrees, minutes, and seconds.
+
+  This function converts a decimal degree value to degrees, minutes, and seconds.
+  The function prints the converted value to the Serial monitor.
+
+  @param dec The decimal degree value to be converted.
+*/
 void dec2dms(double dec) {
   int degrees = int(dec);
   int minutes = int(abs(dec - degrees) * 60);
@@ -160,6 +210,20 @@ void dec2dms(double dec) {
   Serial.print("\"");
 }
 
+/**
+  @brief Converts geographic coordinates (latitude and longitude) to UTM coordinates (Easting and Northing).
+
+  This function uses the WGS84 ellipsoid parameters to convert latitude and longitude
+  to UTM (Universal Transverse Mercator) coordinates. The conversion is based on the
+  Transverse Mercator projection.
+
+  @param Latitude The latitude in decimal degrees.
+  @param Longitude The longitude in decimal degrees.
+  @param Easting Reference to a double where the calculated Easting value will be stored.
+  @param Northing Reference to a double where the calculated Northing value will be stored.
+
+  The function prints the calculated Easting and Northing values to the Serial monitor.
+*/
 void converter(double Latitude, double Longitude, double &Easting, double &Northing) {
   const double a = 6378137.000;
   const double FalseOriginE = 500000.0000;
