@@ -13,12 +13,13 @@ This Arduino sketch reads data from a GPS module and outputs it via serial commu
 ### Requirements
 
 - Install the `TinyGPSPlus` library in the Arduino IDE.
+- Use Arduino MEGA.
 
 ### Usage
 
-1. Connect the GPS module to the Arduino.
-2. Upload the `GPS.ino` sketch to the Arduino.
-3. The GPS module will output data in the following format:
+1. Connect the GPS module to the Arduino MEGA.
+2. Upload the `GPS.ino` sketch to the Arduino MEGA.
+3. The GPS module will output data in the following format via serial 3:
     ```CPP
     '<Timestamp>,<Easting>,<Northing>,<Altitude>,<Latitude>,<Longitude>,<Altitude>'
     ```
