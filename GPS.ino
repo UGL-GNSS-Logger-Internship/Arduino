@@ -39,14 +39,13 @@ void loop() {
       printGPSData();
     }
 
-    // if (Serial3.available() > 0) {
-    //   String incomingByte = Serial3.readStringUntil('\n');  // Read one byte at a time
-    //   Serial.print("Received from Serial3: ");
-    //   Serial.println(incomingByte);
-    // }
+    if (Serial3.available() > 0) {
+      String incomingByte = Serial3.readStringUntil('\n');  // Read one byte at a time
+      Serial.print("Received from Serial3: ");
+      Serial.println(incomingByte);
+      delay(400);
+    }
   }
-  // delay(1000);  // Small delay for better serial processing
-
 }
 
 void handlePPS() {
@@ -58,10 +57,12 @@ void printGPSData() {
   if (gps.location.isValid()) {
     Serial.print("Latitude: ");
     Latitude = gps.location.lat();
-    dec2dms(Latitude);
+    // dec2dms(Latitude);
+    Serial.print(Latitude,6);
     Serial.print(", Longitude: ");
     Longitude = gps.location.lng();
-    dec2dms(Longitude);
+    // dec2dms(Longitude);
+    Serial.print(Longitude,6);
     Serial.println("");
     converter(Latitude, Longitude, Easting, Northing);
   } else {
@@ -138,9 +139,9 @@ void printGPSData() {
   Serial3.print(',');
   Serial3.print(Altitude);
   Serial3.print(',');
-  Serial3.print(Latitude);
+  Serial3.print(Latitude,6);
   Serial3.print(',');
-  Serial3.print(Longitude);
+  Serial3.print(Longitude,6);
   Serial3.print(',');
   Serial3.println(Altitude);
 }

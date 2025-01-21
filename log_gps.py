@@ -4,7 +4,8 @@ from plot import GPSPlotter
 
 arduino_port = "COM3" # Change to your port
 baud_rate = 9600
-output_file = f"logs/GPS_Log_{time.strftime('%d%m%Y_%H%M%S')}.txt"
+time_start = time.time()
+output_file = f"logs/GPS_Log_{time_start}.txt"
 
 print(f"Connecting to {arduino_port} at {baud_rate} baud.")
 ser = serial.Serial(arduino_port, baud_rate)
@@ -26,3 +27,6 @@ except KeyboardInterrupt:
 finally:
     ser.close()
     print("Serial port closed.")
+    plotter.save(f"logs/GPS_Plot_{time_start}.png")
+    plotter.show()
+    # plotter.close()
