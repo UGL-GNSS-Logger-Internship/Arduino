@@ -85,3 +85,6 @@ The `GPSPlotter` class provides methods to plot GPS data.
       // 0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77, // output@2Hz
     };
     ```
+
+# To-do
+- [ ] Modify the output structure of GPS module for collaborating with other modules.
