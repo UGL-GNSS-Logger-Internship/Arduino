@@ -15,9 +15,9 @@ Usage:
 """
 import serial
 import time
-from GPS_plotter import GPSPlotter
+from gps_plotter import GPSPlotter
 
-arduino_port = "COM3" # Change to your port
+arduino_port = "COM3" # Change to the port where your Arduino is connected
 baud_rate = 9600
 time_start = time.time()
 output_file = f"logs/GPS_Log_{time_start}.txt"
@@ -26,20 +26,20 @@ print(f"Connecting to {arduino_port} at {baud_rate} baud.")
 ser = serial.Serial(arduino_port, baud_rate)
 print("Connected to serial port.")
 
+# area parameter: [min_longitude, max_longitude, min_latitude, max_latitude]
 plotter = GPSPlotter(
     area=[151.231, 151.2325, -33.9185, -33.9175],
     add_feature=False
 )
 
 try:
-    print("Saving data to file...")
+    print("Saving data to file and ploting position...")
     while True:
         if ser.in_waiting > 0:
             data = ser.readline().decode("utf-8").strip()
-            # <Timestamp>,<Easting>,<Northing>,<Altitude>,<Latitude>,<Longitude>,<Altitude>
+            print(data) # <Timestamp>,<Easting>,<Northing>,<Altitude>,<Latitude>,<Longitude>,<Altitude>
             lat, lon = data.split(",")[4:6]
             plotter.plot(lat, lon)
-            print(data)
             with open(output_file, "a", encoding="utf-8") as file:
                 file.write(data+"\n")
 except KeyboardInterrupt:
@@ -49,4 +49,4 @@ finally:
     print("Serial port closed.")
     plotter.save(f"logs/GPS_Plot_{time_start}.png")
     plotter.show()
-    # plotter.close()
+    plotter.close()
