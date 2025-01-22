@@ -41,17 +41,6 @@ void loop() {
   // listenToPi();
 }
 
-  // static unsigned long lastCheck = 0;
-  // if (piSerial.available() > 0) {
-  //   String incomingByte = piSerial.readStringUntil('\n');  // Read one byte at a time
-  //   Serial.print("Received from piSerial: ");
-  //   Serial.println(incomingByte);
-  //   lastCheck = millis();
-  // }
-  // // if (millis() - lastCheck >= 400) {
-  // //   lastCheck = millis();
-  // // }
-
 void listenToPi() {
   if (piSerial.available() > 0) {
     String incomingByte = piSerial.readStringUntil('\n');  // Read one byte at a time
