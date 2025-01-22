@@ -32,8 +32,8 @@ TinyGPSPlus gps;
 
 /* UBX-CFG-RATE */
 u8 ubxCfgRate[] {
-  0xB5,0x62,0x06,0x08,0x06,0x00,0xE8,0x03,0x01,0x00,0x01,0x00,0x01,0x39, // output@1Hz
-  // 0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77, // output@2Hz
+  // 0xB5,0x62,0x06,0x08,0x06,0x00,0xE8,0x03,0x01,0x00,0x01,0x00,0x01,0x39, // output@1Hz
+  0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77, // output@2Hz
 };
 
 /**
@@ -41,15 +41,15 @@ u8 ubxCfgRate[] {
 */
 void setup() {
   Serial.begin(9600);    // For debugging (PC communication)
-  Serial1.begin(9600);   // For GPS communication
+  Serial2.begin(9600);   // For GPS communication
   Serial3.begin(9600);   // For Arduino - Raspberry Pi communication
 
   pinMode(PPS_PIN, INPUT);
 
   attachInterrupt(digitalPinToInterrupt(PPS_PIN), handlePPS, RISING);
-  Serial1.write(ubxCfgRate, sizeof(ubxCfgRate));
+  Serial2.write(ubxCfgRate, sizeof(ubxCfgRate));
   Serial.println("GPS module initialized.");
-  Serial3.write("GPS module initialized.");
+  Serial3.write("GPS module initialized.\n");
 }
 
 /**
@@ -60,15 +60,15 @@ void setup() {
 */
 void loop() {
   // Read data from GPS
-  while (Serial1.available() > 0) {
-    char c = Serial1.read();
+  while (Serial2.available() > 0) {
+    char c = Serial2.read();
     // Serial.print(c);
     gps.encode(c);
 
-    if (gps.location.isUpdated()) {
+    // if (gps.location.isUpdated()) {
       // Print GPS data
       printGPSData();
-    }
+    // }
 
     static unsigned long lastCheck = 0;
     if (Serial3.available() > 0) {
