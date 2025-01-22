@@ -1,90 +1,64 @@
-# GPS Module Scripts
+# Arduino Sensor Data Logger of UGL GNSS Logger Internship
 
-This repository contains scripts for working with a GPS module. The scripts include:
+## Overview
 
-1. `GPS.ino` - Arduino sketch for reading GPS data.
-2. `log_gps.py` - Python script for logging GPS data.
-3. `GPS_plotter.py` - Python script for plotting GPS data.
+This project involves an Arduino-based system that reads data from various sensors (MPU6050, IR sensor, and GPS module), logs the data, and communicates with a Raspberry Pi. The data could plotted in real-time using a Python script.
 
-## GPS.ino
+## Components
 
-This Arduino sketch reads data from a GPS module and outputs it via serial communication.
+- **Arduino MEGA**: The main microcontroller board used in the project.
+- **MPU6050**: A 3-dimension motion tracking device for measuring acceleration and gyroscopic data.
+- **IR Sensor**: An infrared sensor used for detecting obstacles or measuring distances.
+- **KS0319 keyestudio GPS module**: A GPS module for obtaining location data.
+- **Raspberry Pi 4B**: Used for receiving data from the Arduino and further processing.
 
-### Requirements
+## Files
 
-- Install the `TinyGPSPlus` library in the Arduino IDE.
-- Use Arduino MEGA.
+- **main.ino**: The main Arduino sketch that integrates all the sensors and handles communication with the Raspberry Pi.
+- **MPU.h / MPU.cpp**: Contains functions for setting up and processing data from the MPU6050 sensor.
+- **IR.h / IR.cpp**: Contains functions for setting up and processing data from the IR sensor.
+- **GPS.h / GPS.cpp**: Contains functions for setting up and processing data from the GPS module.
+- **log_gps.py**: A Python script for reading GPS data from the Arduino, logging it to a file, and plotting it in real-time.
+- **gps_plotter.py**: Contains the `GPSPlotter` class for plotting GPS data.
 
-### Usage
+## Setup
 
-1. Connect the GPS module to the Arduino MEGA.
-2. Upload the `GPS.ino` sketch to the Arduino MEGA.
-3. The GPS module will output data in the following format via serial 3:
-    ```CPP
-    '<Timestamp>,<Easting>,<Northing>,<Altitude>,<Latitude>,<Longitude>,<Altitude>'
-    ```
+1. **Arduino Setup**:
+    - Connect the MPU6050, IR sensor, GPS module, and Raspberry Pi to the Arduino.
+    - Install `TinyGPSPlus` and `MPU6050_light` libraries in Arduino IDE.
+    - Upload the `main.ino` sketch to the Arduino.
 
-## log_gps.py
+2. **Python Environment**:
+    - Ensure you have Python installed.
+    - Install the required Python libraries:
+      ```sh
+      pip install pyserial matplotlib cartopy
+      ```
 
-This Python script logs GPS data from the Arduino to a file and plots it in real-time.
+## Usage
 
-### Requirements
+1. **Arduino**:
+    - Connect the Arduino to your computer.
+    - Open the Serial Monitor to view the sensor data.
 
-- Install the `pyserial` package in Python.
+2. **Python Script**:
+    - Run the `log_gps.py` script to start logging GPS data and plotting it in real-time:
+      ```sh
+      python log_gps.py
+      ```
+    - Note that the Serial Monitor and Python script cannot run at the same time.
 
-### Usage
+## Communication
 
-1. Change the port in **line 4** to match your Arduino's port:
-    ```python
-    arduino_port = "COM3" # Change to your port
-    ```
-2. Run the script:
-    ```bash
-    python log_gps.py
-    ```
-3. The script will save the GPS data to a file and plot it in real-time.
+- The Arduino communicates with the Raspberry Pi via serial communication.
+- The `listenToPi` function in `main.ino` handles incoming messages from the Raspberry Pi.
+  - This function is commented out by default.
 
-## GPS_plotter.py
+## License
 
-This Python script plots GPS data on a map.
+This project is licensed under the MIT License. See the LICENSE file for details.
 
-### Requirements
+## Acknowledgements
 
-- Install the `matplotlib` and `cartopy` packages in Python.
-
-### Usage
-
-The `GPSPlotter` class provides methods to plot GPS data.
-
-1. Initial GPSPlotter:
-    ```python
-    plotter = GPSPlotter.plotter()
-    ```
-2. Input data into plotter and plot the position:
-    ```python
-    plotter.plot(data)
-    ```
-3. Save image:
-    ```python
-    plotter.save('filename')
-    ```
-4. Show and close image:
-    ```python
-    plotter.show()
-    plotter.close()
-    ```
-
-### Note
-
-- The GPS module can only be used outdoors and cannot position indoors.
-- The module needs several minutes to scan GPS signals and initialize the position. This may take from 1 to 5 minutes.
-- The output frequency is 1 Hz. It can be changed in `GPS.ino` by modifying the `ubxCfgRate` array:
-    ```cpp
-    u8 ubxCfgRate[] {
-      0xB5,0x62,0x06,0x08,0x06,0x00,0xE8,0x03,0x01,0x00,0x01,0x00,0x01,0x39, // output@1Hz
-      // 0xB5,0x62,0x06,0x08,0x06,0x00,0xF4,0x01,0x01,0x00,0x01,0x00,0x0B,0x77, // output@2Hz
-    };
-    ```
-
-# To-do
-- [ ] Modify the output structure of GPS module for collaborating with other modules.
+- The project uses the `TinyGPSPlus` library for GPS data parsing.
+- The `MPU6050_light` library is used for interfacing with the MPU6050 sensor.
