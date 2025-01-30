@@ -94,7 +94,7 @@ def converter(Latitude, Longitude):
 
     return Easting, Northing
 
-def cameraRecord(logger_folder):
+def cameraRecord():
     picam2 = Picamera2()
     picam2.preview_configuration.main.size = (640, 480)
     picam2.preview_configuration.main.format = 'RGB888'
@@ -110,7 +110,7 @@ def cameraRecord(logger_folder):
 
             frame = picam2.capture_array()
             font = cv2.FONT_HERSHEY_SIMPLEX
-            image = cv2.putText(image, date_time, (20, 50), font, 1, (1, 255, 255), 4)
+            image = cv2.putText(frame, date_time, (20, 50), font, 1, (1, 255, 255), 4)
             cv2.imshow('Live Video Recording (UGL)', image)
             out.write(image)
 
@@ -124,8 +124,12 @@ def cameraRecord(logger_folder):
 
     return 0
 
-def serialRead(logger_folder):
+def serialRead():
     ser = serial.Serial('/dev/ttyAMA0', 9600, timeout=1)
+    with open(f'{logger_folder}/gps.txt', 'w') as f:
+        f.write(f"timestamp,UTC_time,valid,latitude,direction_ns,longitude,direction_ew,speed,angle,UTC_date,magnetic_var,magnetic_dir,mode_ind\n")
+    with open(f'{logger_folder}/logger.txt', 'w') as f:
+        f.write(f"UTC_date,UTC_time,latitude,longitude,easting,northing\n")
 
     while True:
         try:
@@ -154,9 +158,10 @@ def serialRead(logger_folder):
 
                     with open(f'{logger_folder}/gps.txt', 'a') as f:
                         f.write(f"{date_time},{time_srt},{valid},{latitude},{direction_ns},{longitude},{direction_ew},{speed},{angle},{date_srt},{magnetic_var},{magnetic_dir},{mode_ind}\n")
-                    easting, northing = converter(latitude, longitude)
-                    with open(f'{logger_folder}/logger.txt', 'a') as f:
-                        f.write(f"{date_srt},{time_srt},{latitude},{longitude},{easting},{northing}\n")
+                    if latitude != '' and longitude != ''
+                        easting, northing = converter(float(latitude), float(longitude))
+                        with open(f'{logger_folder}/logger.txt', 'a') as f:
+                            f.write(f"{date_srt},{time_srt},{latitude},{longitude},{easting},{northing}\n")
         except KeyboardInterrupt:
             break
 
@@ -165,15 +170,14 @@ def serialRead(logger_folder):
 
 if __name__ == '__main__':
     start_time = str(datetime.datetime.now())
-    logger_folder = start_time
-    log_file = start_time / 'logger.log'
+    logger_folder = f'logs/{start_time}'
     os.makedirs(logger_folder)
 
     # Creates a log file and redirects errors to it
-    sys.stderr = open(f'{logger_folder}/err.txt', "w")
+    # sys.stderr = open(f'{logger_folder}/err.txt', "w")
 
-    camera_thread = threading.Thread(target=cameraRecord, args=(logger_folder))
-    serial_thread = threading.Thread(target=serialRead, args=(logger_folder))
+    camera_thread = threading.Thread(target=cameraRecord, args=())
+    serial_thread = threading.Thread(target=serialRead, args=())
 
     camera_thread.start()
     serial_thread.start()
