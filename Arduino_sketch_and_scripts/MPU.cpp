@@ -3,17 +3,16 @@
 MPU6050 mpu(Wire);
 int idxMPU = 1;
 
-void setupMPU(HardwareSerial &piSerial)
-{
+void setupMPU(HardwareSerial &piSerial) {
   Wire.begin();
   // Set up the IMU
   byte status = mpu.begin();
   // Serial.print(F("MPU6050 status: "));
   // Serial.println(status);
-  while (status != 0)
-  { // stop everything if could not connect to MPU6050
+  while (status != 0) {  // stop everything if could not connect to MPU6050
   }
-  // Serial.println(F("Calculating offsets, do not move MPU6050"));
+  Serial.println(F("Calculating offsets, do not move."));
+  piSerial.println(F("Calculating offsets, do not move."));
   delay(1000);
   mpu.calcOffsets(true, true);
   // Serial.begin(9600);
@@ -21,11 +20,9 @@ void setupMPU(HardwareSerial &piSerial)
   piSerial.write("MPU initialized.");
 }
 
-void processMPU(HardwareSerial &piSerial, bool &outputFlagMPU)
-{
+void processMPU(HardwareSerial &piSerial, bool &outputFlagMPU) {
   mpu.update();
-  if (outputFlagMPU)
-  {
+  if (outputFlagMPU) {
     Serial.print("Angle X: ");
     Serial.print(mpu.getAngleX());
     Serial.print(", Angle Y: ");

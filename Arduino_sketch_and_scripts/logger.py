@@ -68,43 +68,49 @@ def main():
     with open(log_ir, 'w') as f:
         f.write(f"Timestamp,IR value\n")
 
-    try:
-        # print("Saving data to file and ploting position...")
-        while True:
+    while True:
+        # print("Saving data to file...")
+        try:
             if ser.in_waiting > 0:
                 data = ser.readline().decode("utf-8").strip()
                 sys.stdout = open(log_main, 'a')
-                print(data)
+                print(f"{time.strftime('%H%M%S')},{data}")
                 if data.startswith("0") or data.split(",")[0] == "0":
                     # gps_data = data.split(",")[1:]
                     gps_data = data.split(",")[2:]
                     sys.stdout = open(log_gps, 'a')
-                    print(f"{time.strftime('%Y%m%d-%H%M%S')},{','.join(gps_data)}")
+                    print(f"{time.strftime('%H%M%S')},{','.join(gps_data)}")
                     # <Timestamp>,<Easting>,<Northing>,<Altitude>,<Latitude>,<Longitude>,<Altitude>
-                    lat, lon = gps_data.split(",")[4:6]
-                    plotter.plot(lat, lon)
+                    # lat, lon = gps_data.split(",")[4:6]
+                    # plotter.plot(lat, lon)
                 elif data.startswith("1") or data.split(",")[0] == "1":
                     mpu_data = data.split(",")[1:]
                     sys.stdout = open(log_mpu, 'a')
-                    print(f"{time.strftime('%Y%m%d-%H%M%S')},{','.join(mpu_data)}")
+                    print(f"{time.strftime('%H%M%S')},{','.join(mpu_data)}")
                     # <Timestamp>,<x-axis>,<y-axis>,<z-axis>
                 elif data.startswith("2") or data.split(",")[0] == "2":
                     ir_data = data.split(",")[1:]
                     sys.stdout = open(log_ir, 'a')
-                    print(f"{time.strftime('%Y%m%d-%H%M%S')},{','.join(ir_data)}")
+                    print(f"{time.strftime('%H%M%S')},{','.join(ir_data)}")
                     # <Timestamp>,<IR value>
 
-        sys.stdout = sys.__stdout__
-    except KeyboardInterrupt:
-        sys.stdout = sys.__stdout__
-        print("\nStopping data capture.")
-    finally:
-        sys.stdout = sys.__stdout__
-        print("Serial port closed.")
-        ser.close()
-        plotter.save(f"{log_dir}/GPS_Plot.png")
-        plotter.show()
-        plotter.close()
-
+            sys.stdout = sys.__stdout__
+        except KeyboardInterrupt:
+            sys.stdout = sys.__stdout__
+            print("\nStopping data capture.")
+            break
+        except Exception as E:
+            sys.stdout = sys.__stdout__
+            print(f"Error at {time.strftime('%H%M%S')}: {E}")
+        # finally:
+        #     sys.stdout = sys.__stdout__
+        #     print("Serial port closed.")
+        #     ser.close()
+            # plotter.save(f"{log_dir}/GPS_Plot.png")
+            # plotter.show()
+            # plotter.close()
+    sys.stdout = sys.__stdout__
+    print("Serial port closed.")
+    ser.close()
 if __name__ == "__main__":
     main()

@@ -15,16 +15,15 @@
 TinyGPSPlus gps;
 
 u8 ubxCfgRate[]{
-    // 0xB5,0x62,0x06,0x08,0x06,0x00,0xE8,0x03,0x01,0x00,0x01,0x00,0x01,0x39, // output@1Hz
-    0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xF4, 0x01, 0x01, 0x00, 0x01, 0x00, 0x0B, 0x77, // output@2Hz
+  0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xE8, 0x03, 0x01, 0x00, 0x01, 0x00, 0x01, 0x39,  // output@1Hz
+  // 0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xF4, 0x01, 0x01, 0x00, 0x01, 0x00, 0x0B, 0x77, // output@2Hz
 };
 
 int idxGPS = 0;
 
-void setupGPS(HardwareSerial &gpsSerial, HardwareSerial &piSerial)
-{
+void setupGPS(HardwareSerial &gpsSerial, HardwareSerial &piSerial) {
   // Serial.begin(9600);    // For debugging (PC communication)
-  gpsSerial.begin(9600); // For GPS communication
+  gpsSerial.begin(9600);  // For GPS communication
   // piSerial.begin(9600);  // For Arduino - Raspberry Pi communication
 
   // pinMode(PPS_PIN, INPUT);
@@ -35,11 +34,9 @@ void setupGPS(HardwareSerial &gpsSerial, HardwareSerial &piSerial)
   piSerial.write("GPS module initialized.");
 }
 
-void loopGPS(HardwareSerial &gpsSerial, HardwareSerial &piSerial, bool &outputFlagGPS)
-{
+void loopGPS(HardwareSerial &gpsSerial, HardwareSerial &piSerial, bool &outputFlagGPS) {
   // Read data from GPS
-  if (gpsSerial.available() > 0)
-  {
+  if (gpsSerial.available() > 0) {
     char gpsdata = gpsSerial.read();
     // Serial.print(gpsdata);
     gps.encode(gpsdata);
@@ -55,17 +52,14 @@ void loopGPS(HardwareSerial &gpsSerial, HardwareSerial &piSerial, bool &outputFl
 //   Serial.println("PPS signal");
 // }
 
-void printGPSData(HardwareSerial &piSerial, bool &outputFlagGPS)
-{
+void printGPSData(HardwareSerial &piSerial, bool &outputFlagGPS) {
   double Latitude, Longitude, Easting, Northing;
   // Print latitude and longitude
-  if (gps.location.isValid())
-  {
+  if (gps.location.isValid()) {
     Latitude = gps.location.lat();
     Longitude = gps.location.lng();
     converter(Latitude, Longitude, Easting, Northing);
-    if (outputFlagGPS)
-    {
+    if (outputFlagGPS) {
       Serial.print("Latitude: ");
       Serial.print(Latitude, 6);
       Serial.print(", Longitude: ");
@@ -75,27 +69,22 @@ void printGPSData(HardwareSerial &piSerial, bool &outputFlagGPS)
       Serial.print(", Northing: ");
       Serial.println(Northing, 3);
     }
-  }
-  else
-  {
+  } else {
     Latitude = NULL;
     Longitude = NULL;
     Easting = NULL;
     Northing = NULL;
-    if (outputFlagGPS)
-    {
+    if (outputFlagGPS) {
       Serial.println("Location not available");
     }
   }
 
   // Print date and time
   u32 Date, Time;
-  if (gps.date.isValid() && gps.time.isValid())
-  {
+  if (gps.date.isValid() && gps.time.isValid()) {
     Date = gps.date.value();
     Time = gps.time.value();
-    if (outputFlagGPS)
-    {
+    if (outputFlagGPS) {
       Serial.print("Date: ");
       Serial.print(gps.date.month());
       Serial.print("/");
@@ -110,77 +99,58 @@ void printGPSData(HardwareSerial &piSerial, bool &outputFlagGPS)
       Serial.print(gps.time.second());
       Serial.println(" UTC");
     }
-  }
-  else
-  {
+  } else {
     Date = NULL;
     Time = NULL;
-    if (outputFlagGPS)
-    {
+    if (outputFlagGPS) {
       Serial.println("Date/Time not available");
     }
   }
 
   // Print altitude
   double Altitude;
-  if (gps.altitude.isValid())
-  {
+  if (gps.altitude.isValid()) {
     Altitude = gps.altitude.meters();
-    if (outputFlagGPS)
-    {
+    if (outputFlagGPS) {
       Serial.print("Altitude: ");
       Serial.println(" meters");
     }
-  }
-  else
-  {
+  } else {
     Altitude = NULL;
-    if (outputFlagGPS)
-    {
+    if (outputFlagGPS) {
       Serial.println("Altitude not available");
     }
   }
 
   // Print speed
   double Speed;
-  if (gps.speed.isValid())
-  {
+  if (gps.speed.isValid()) {
     Speed = gps.speed.kmph();
-    if (outputFlagGPS)
-    {
+    if (outputFlagGPS) {
       Serial.print("Speed: ");
       Serial.print(Speed);
       Serial.println(" km/h");
     }
-  }
-  else
-  {
+  } else {
     Speed = NULL;
-    if (outputFlagGPS)
-    {
+    if (outputFlagGPS) {
       Serial.println("Speed not available");
     }
   }
 
   // Print satellites in view
-  if (gps.satellites.isValid())
-  {
-    if (outputFlagGPS)
-    {
+  if (gps.satellites.isValid()) {
+    if (outputFlagGPS) {
       Serial.print("Satellites in view: ");
       Serial.println(gps.satellites.value());
     }
-  }
-  else
-  {
-    if (outputFlagGPS)
-    {
+  } else {
+    if (outputFlagGPS) {
       Serial.println("Satellite data not available");
     }
   }
 
-  if (outputFlagGPS)
-  {
+  if (outputFlagGPS) {
     Serial.println();
   }
 
@@ -219,8 +189,7 @@ void printGPSData(HardwareSerial &piSerial, bool &outputFlagGPS)
   Serial.println(Altitude);
 }
 
-void dec2dms(double dec)
-{
+void dec2dms(double dec) {
   int degrees = int(dec);
   int minutes = int(abs(dec - degrees) * 60);
   double seconds = ((abs(dec - degrees) * 60) - minutes) * 60;
@@ -233,8 +202,7 @@ void dec2dms(double dec)
   Serial.print("\"");
 }
 
-void converter(double Latitude, double Longitude, double &Easting, double &Northing)
-{
+void converter(double Latitude, double Longitude, double &Easting, double &Northing) {
   const double a = 6378137.000;
   const double FalseOriginE = 500000.0000;
   const double FalseOriginN = 10000000.0000;

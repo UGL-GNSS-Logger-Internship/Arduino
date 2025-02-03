@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 typedef uint32_t u32;
-typedef uint8_t  u8;
+typedef uint8_t u8;
 
 extern TinyGPSPlus gps;
 // #define PPS_PIN 38
@@ -34,4 +34,4 @@ void printGPSData(HardwareSerial &piSerial, bool &outputFlagGPS);
 void dec2dms(double dec);
 void converter(double Latitude, double Longitude, double &Easting, double &Northing);
 
-#endif // GPS_H
+#endif  // GPS_H
