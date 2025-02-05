@@ -2,7 +2,7 @@
 """
 File: main.py
 Author: UNSW UGL GNSS Logger Internship Team
-Version: 1.0.0
+Version: 1.0.1
 Description:
     Main script for the GNSS Logger.
     This script is responsible for reading data from the GPS modules, recording video from the camera module, and switching between GPS modules.
@@ -28,13 +28,10 @@ Setup:
     4. (Option) Press the button to capture and save an image to the specified directory.
     5. (Option) Touch 'Start Recording' to start recording video if it is not auto recording.
 GUI Layout:
-    - Label
-        - GPS label: Show which GPS module is now using.
-    - Button
-        - Switch GPS: Switch GPS modules between using internal anteena and external antenna.
-        - Start Recording: Start recording video if it is not auto recording.
-        - Capture an image: Capture an image and save it to the specified directory.
-        - Stop logging: Stop logging data and video, and exit the program.
+    - Switch GPS: Switch GPS modules between using internal antenna and external antenna.
+    - Start Recording: Start recording video if it is not auto recording.
+    - Capture an image: Capture an image and save it to the specified directory.
+    - Stop logging: Stop logging data and video, and exit the program.
 """
 import os
 import sys
@@ -148,6 +145,8 @@ def cameraRecord():
     capture_folder = f'{logger_folder}/captured_img'
     os.makedirs(capture_folder)
 
+    with open(f'{logger_folder}/video_timestamp.csv', 'w') as f:
+        f.write('timestamp\n')
     with open(f'{logger_folder}/captured_time.txt', 'w') as f:
         f.write('timestamp\n')
 
@@ -161,6 +160,8 @@ def cameraRecord():
         if time_set.is_set() and camera_start.is_set():
             try:
                 out.write(image)
+                with open(f'{logger_folder}/video_timestamp.csv', 'a') as f:
+                    f.write(date_time+'\n')
                 cv2.imshow('Live Video Recording (UGL)', image)
 
                 if cv2.waitKey(1) != -1:
@@ -282,7 +283,7 @@ def ui():
         root,
         text='GPS 1'
     )
-    gps_label.pack(padx=20, pady=10)
+    # gps_label.pack(padx=20, pady=10)
 
     switch_id = 0
     def switch_gps(switch_id):
