@@ -493,3 +493,4 @@ if __name__ == '__main__':
     serial_thread.join()
 
     print("Program exited cleanly.")
+    subprocess.run(['xdg-open', logger_folder])
