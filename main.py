@@ -2,7 +2,7 @@
 """
 File: main.py
 Author: UNSW UGL GNSS Logger Internship Team
-Version: 1.0.1
+Version: 1.1.0.beta
 Description:
     Main script for the GNSS Logger.
     This script is responsible for reading data from the GPS modules, recording video from the camera module, and switching between GPS modules.
@@ -17,7 +17,7 @@ Dependencies:
 Setup:
     1. Install the required dependencies using pip:
         ``` bash
-        pip install opencv-python numpy picamera2 pyserial
+        pip install opencv-python numpy picamera2 pyserial tkinter
         ```
     2. Connect the GPS modules, camera module, and button to the Raspberry Pi.
     3. Run the script with the following command:
@@ -28,6 +28,7 @@ Setup:
     4. (Option) Press the button to capture and save an image to the specified directory.
     5. (Option) Touch 'Start Recording' to start recording video if it is not auto recording.
 GUI Layout:
+    - GPS Label: Display the current GPS module being used.
     - Switch GPS: Switch GPS modules between using internal antenna and external antenna.
     - Start Recording: Start recording video if it is not auto recording.
     - Capture an image: Capture an image and save it to the specified directory.
@@ -45,12 +46,17 @@ import threading
 import RPi.GPIO as GPIO
 import subprocess
 import tkinter as tk
+import signal
 
-BUTTON = 6
-GPS1 = 23
-GPS2 = 24
+BUTTON = 16
+GPS1 = 6
+GPS2 = 5
+SAVE_ERROR = False
 
 def converter(Latitude, Longitude):
+    '''
+    This function converts latitude and longitude to easting and northing.
+    '''
     a = 6378137.000
     FalseOriginE = 500000.0000
     FalseOriginN = 10000000.0000
@@ -133,36 +139,65 @@ def converter(Latitude, Longitude):
     return Easting, Northing
 
 def cameraRecord():
-    picam2 = Picamera2()
-    picam2.preview_configuration.main.size = (640,480)
-    picam2.preview_configuration.main.format = 'RGB888'
-    picam2.configure('preview')
-    picam2.start()
+    '''
+    This function handles recording from either a Raspberry Pi Camera Module or a USB camera.
+    '''
+    CAPTURE_FOLDER = f'{logger_folder}/captured_img'
+    os.makedirs(CAPTURE_FOLDER, exist_ok=True)
+    CAPTURED_TIME_FILE = f'{logger_folder}/captured_time.txt'
+    VIDEO_FILE = f'{logger_folder}/logger.mp4'
+    VIDEO_TIMESTAMP_FILE = f'{logger_folder}/video_timestamp.csv'
+
+    with open(VIDEO_TIMESTAMP_FILE, 'w') as f:
+        f.write('timestamp\n')
+    with open(CAPTURED_TIME_FILE, 'w') as f:
+        f.write('timestamp\n')
+
+    # Attempt to initialize the Pi Camera
+    try:
+        picam2 = Picamera2()
+        picam2.preview_configuration.main.size = (640, 480)
+        picam2.preview_configuration.main.format = 'RGB888'
+        picam2.configure('preview')
+        picam2.start()
+        camera_type = "pi"
+    except Exception as e:
+        print(f"Pi Camera initialization failed: {e}. Trying USB camera.")
+        # If Pi Camera fails, try USB camera
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            print("Error: Could not open USB camera.")
+            return -1  # Indicate an error
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        camera_type = "usb"
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(f'{logger_folder}/logger.mp4', fourcc, 30.0, (640,480))
+    out = cv2.VideoWriter(VIDEO_FILE, fourcc, 30.0, (640, 480))
 
-    capture_folder = f'{logger_folder}/captured_img'
-    os.makedirs(capture_folder)
-
-    with open(f'{logger_folder}/video_timestamp.csv', 'w') as f:
-        f.write('timestamp\n')
-    with open(f'{logger_folder}/captured_time.txt', 'w') as f:
-        f.write('timestamp\n')
-
+    captured = False
     while True:
         date_time = str(datetime.datetime.now())
 
-        frame = picam2.capture_array()
+        if camera_type == "pi":
+            frame = picam2.capture_array()
+        elif camera_type == "usb":
+            ret, frame = cap.read()
+            if not ret:
+                print("Error: Could not read frame from USB camera.")
+                break
+        else:
+            break
+
         font = cv2.FONT_HERSHEY_SIMPLEX
         image = cv2.putText(frame, date_time, (20, 50), font, 1, (1, 255, 255), 4)
 
         if time_set.is_set() and camera_start.is_set():
             try:
                 out.write(image)
-                with open(f'{logger_folder}/video_timestamp.csv', 'a') as f:
-                    f.write(date_time+'\n')
-                cv2.imshow('Live Video Recording (UGL)', image)
+                with open(VIDEO_TIMESTAMP_FILE, 'a') as f:
+                    f.write(date_time + '\n')
+                cv2.imshow('Live Video Recording', image)
 
                 if cv2.waitKey(1) != -1:
                     break
@@ -172,183 +207,271 @@ def cameraRecord():
 
         if GPIO.input(BUTTON) == GPIO.HIGH or cap_image.is_set():
             if not captured:
-                cv2.imwrite(f'{capture_folder}/{date_time}.jpg', image)
-                with open(f'{logger_folder}/captured_time.txt', 'a') as f:
-                    f.write(date_time+'\n')
+                cv2.imwrite(f'{CAPTURE_FOLDER}/{date_time}.jpg', image)
+                with open(CAPTURED_TIME_FILE, 'a') as f:
+                    f.write(date_time + '\n')
                 captured = True
                 cap_image.clear()
         else:
             captured = False
 
+        time.sleep(0.1)  # Add a small sleep interval to reduce CPU load
         if logging_stop.is_set():
             break
 
-    picam2.close()
+    if camera_type == "pi":
+        picam2.close()
+    else:
+        cap.release() #release the usb camera.
+
+    out.release() #release the video writer.
     cv2.destroyAllWindows()
 
     return 0
 
 def serialRead():
-    ser = serial.Serial('/dev/ttyAMA0', 9600, timeout=1)
-    with open(f'{logger_folder}/gps.txt', 'w') as f:
-        f.write(f"timestamp,UTC_time,valid,latitude,direction_ns,longitude,direction_ew,speed,angle,UTC_date,magnetic_var,magnetic_dir,mode_ind\n")
-    with open(f'{logger_folder}/logger.txt', 'w') as f:
-        f.write(f"timestamp,UTC_date,UTC_time,latitude,longitude,easting,northing\n")
+    '''
+    This function reads data from the GPS modules and writes the data to a file.
+    '''
+    def cat(process):
+        try:
+            process = subprocess.Popen(
+                ['stdbuf', '-o0', 'cat', '/dev/ttyAMA0'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                preexec_fn=lambda: signal.signal(signal.SIGINT, signal.SIG_IGN)
+            )
+            return process
+        except subprocess.CalledProcessError as e:
+            print(f"Error starting cat: {e}")
+            time.sleep(1)
+            return None
+        except Exception as e:
+            print(f"Unexpected error starting cat: {e}")
+            time.sleep(1)
+            return None
+
+    try:
+        ser = serial.Serial('/dev/ttyAMA0', 9600, timeout=1)
+        ser.flush()
+        serial_available = True
+    except serial.SerialException:
+        print("Serial port /dev/ttyAMA0 not available. Using subprocess.")
+        serial_available = False
+
+    RAW_DATA_FILE = f'{logger_folder}/raw_data.txt'
+    LOCATION_FILE = f'{logger_folder}/location.txt'
+
+    with open(RAW_DATA_FILE, 'w') as f:
+        f.write(f"timestamp,raw data\n")
+    with open(LOCATION_FILE, 'w') as f:
+        f.write(f"timestamp,latitude,longitude,altitude,easting,northing\n")
 
     gps_select = 0
-    GPIO.output(GPS1, GPIO.HIGH)
-    GPIO.output(GPS2, GPIO.LOW)
+    GPIO.output(GPIO.GPS1, GPIO.HIGH)  # Assuming GPIO.GPS1 and GPIO.GPS2 are defined
+    GPIO.output(GPIO.GPS2, GPIO.LOW)
+
+    process = None
+    rmc_data = None
+    gga_data = None
 
     while True:
         if gps_switch.is_set():
-            gps_select = (gps_select+1) % 2
+            gps_select = (gps_select + 1) % 2
             if gps_select == 0:
-                GPIO.output(GPS1, GPIO.HIGH)
-                GPIO.output(GPS2, GPIO.LOW)
+                GPIO.output(GPIO.GPS1, GPIO.HIGH)
+                GPIO.output(GPIO.GPS2, GPIO.LOW)
             elif gps_select == 1:
-                GPIO.output(GPS1, GPIO.LOW)
-                GPIO.output(GPS2, GPIO.HIGH)
+                GPIO.output(GPIO.GPS1, GPIO.LOW)
+                GPIO.output(GPIO.GPS2, GPIO.HIGH)
             gps_switch.clear()
 
         try:
-            if ser.in_waiting > 0:
+            if serial_available:
                 try:
-                    data = ser.readline().decode("utf-8").strip()
-                except:
-                    data = ""
+                    if ser.in_waiting > 0:
+                        try:
+                            data = ser.readline().decode("utf-8").strip()
+                        except UnicodeDecodeError:
+                            data = ""
+                except serial.SerialException:
+                    print("Serial port error, switching to subprocess.")
+                    serial_available = False
+                    continue
 
-                fields = data.split(',')
+            if not serial_available:
+                if process is None or process.poll() is not None:
+                    if process is not None:
+                        print("Restarting cat /dev/ttyAMA0...")
 
-                if fields[0] == '$GPRMC':
-                    time_str = fields[1]
-                    valid = fields[2]
-                    latitude = fields[3]
-                    direction_ns = fields[4]
-                    longitude = fields[5]
-                    direction_ew = fields[6]
-                    speed = fields[7]
-                    angle = fields[8]
-                    date_str = fields[9]
-                    magnetic_var = fields[10]
-                    magnetic_dir = fields[11]
-                    mode_ind = fields[12]
+                    process = cat(process)
+                    if process is None:
+                        continue
 
-                    if time_str != '' and date_str != '' and valid == 'A':
-                        if not time_set.is_set():
+                try:
+                    output = process.stdout.readline()
+                    if output:
+                        data = output.decode().strip()
+                    else:
+                        continue
+                except IOError as e:
+                    print(f"IO Error reading output: {e}")
+                    time.sleep(0.1)
+                    continue
+                except Exception as e:
+                    print(f"Unexpected error in cat: {e}")
+                    process = cat(process)
+                    if process is None:
+                        continue
+
+            fields = data.split(',')
+            with open(RAW_DATA_FILE, 'a') as f:
+                f.write(f"{str(datetime.datetime.now())},{data}\n")
+
+            if fields and fields[0] == '$GPRMC':
+                rmc_data = fields[:]
+                if rmc_data[2] == 'A': # Valid data
+                    if not time_set.is_set():
+                        time_str = rmc_data[1]
+                        date_str = rmc_data[9]
+                        if time_str != '' and date_str != '':
                             time = f"{time_str[0:2]}:{time_str[2:4]}:{time_str[4:]}"
                             date = f"20{date_str[4:6]}-{date_str[2:4]}-{date_str[0:2]}"
                             result = subprocess.run(
                                 ["sudo", "date", "-u", "--set", f"{date} {time}"],
-                                capture_output = True,
-                                text = True
+                                capture_output=True,
+                                text=True
                             )
                             print(result)
-                            print(datetime.datetime.now())
                             time_set.set()
-                        # elif time_set.is_set():
-                        #     camera_start.set()
-                    if time_set.is_set():
-                        date_time = str(datetime.datetime.now())
-                        with open(f'{logger_folder}/gps.txt', 'a') as f:
-                            f.write(f"{date_time},{time_str},{valid},{latitude},{direction_ns},{longitude},{direction_ew},{speed},{angle},{date_str},{magnetic_var},{magnetic_dir},{mode_ind}\n")
+                    elif time_set.is_set():
+                        if not camera_start.is_set():
+                            camera_start.set()
+                else:
+                    rmc_data = None
 
-                        if valid == 'A':
-                            if not camera_start.is_set():
-                                camera_start.set()
-                            latitude_deg = float(latitude[0:2])+float(latitude[2:])/60
-                            longitude_deg = float(longitude[0:3])+float(longitude[3:])/60
+            elif fields and fields[0] == '$GPGGA':
+                gga_data = fields[:]
+                try:
+                    if rmc_data and rmc_data[2] == 'A':
+                        altitude = gga_data[9]
+                        if altitude == '':
+                            altitude = "N/A"
+                        latitude = gga_data[2]
+                        direction_ns = gga_data[3]
+                        longitude = gga_data[4]
+
+                        if time_set.is_set():
+                            date_time = str(datetime.datetime.now())
+                            latitude_deg = float(latitude[0:2]) + float(latitude[2:]) / 60
+                            longitude_deg = float(longitude[0:3]) + float(longitude[3:]) / 60
                             if direction_ns == 'S':
                                 latitude_deg = -latitude_deg
                             easting, northing = converter(float(latitude_deg), float(longitude_deg))
-                            with open(f'{logger_folder}/logger.txt', 'a') as f:
-                                f.write(f"{date_time},{date_str},{time_str},{latitude_deg},{longitude_deg},{easting},{northing}\n")
+                            with open(LOCATION_FILE, 'a') as f:
+                                f.write(f"{date_time},{latitude},{longitude},{altitude},{easting},{northing}\n")
 
-                if logging_stop.is_set():
-                    break
+                except IndexError:
+                    altitude = "N/A"
+
+            rmc_data = None
+            gga_data = None
 
             if logging_stop.is_set():
                 break
 
         except KeyboardInterrupt:
             break
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
-    ser.close()
+        if logging_stop.is_set():
+            break
+
+    if serial_available:
+        try:
+            ser.close()
+        except Exception:
+            print("Error closing serial port")
+    if process and process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            process.kill()
+        except Exception as e:
+            print(f"Error during process termination: {e}")
     return 0
 
-def ui():
-    root = tk.Tk()
-    root.title("GNSS LOGGER")
+class GNSSLoggerUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("GNSS LOGGER")
 
-    gps_label = tk.Label(
-        root,
-        text='GPS 1'
-    )
-    # gps_label.pack(padx=20, pady=10)
+        self.gps_label = tk.Label(self.root, text='Internal GPS')
+        self.gps_label.pack(padx=20, pady=10)
 
-    switch_id = 0
-    def switch_gps(switch_id):
+        self.switch_id = 0
+        self.switch_button = tk.Button(
+            self.root,
+            text='Switch GPS',
+            command=self.switch_gps
+        )
+        self.switch_button.pack(padx=0, pady=10)
+
+        self.start_cap_button = tk.Button(
+            self.root,
+            text='Start recording',
+            command=self.start_cap
+        )
+        self.start_cap_button.pack(padx=10, pady=10)
+
+        self.cap_now_button = tk.Button(
+            self.root,
+            text='Capture an image',
+            command=self.cap_now
+        )
+        self.cap_now_button.pack(padx=10, pady=10)
+
+        self.stop_button = tk.Button(
+            self.root,
+            text='Stop logging',
+            command=self.stop_logging
+        )
+        self.stop_button.pack(padx=10, pady=10)
+
+    def switch_gps(self):
         gps_switch.set()
-        switch_id = (switch_id + 1) %2
-        print
-        if switch_id == 0:
-            gps_label.config(text='GPS 1')
-        if switch_id == 1:
-            gps_label.config(text='GPS 2')
+        self.switch_id = (self.switch_id + 1) % 2
+        if self.switch_id == 0:
+            self.gps_label.config(text='Internal GPS')
+        elif self.switch_id == 1:
+            self.gps_label.config(text='External GPS')
 
-    switch_button = tk.Button(
-        root,
-        text='Switch GPS',
-        command=lambda:switch_gps(switch_id),
-    )
-    switch_button.pack(padx=0, pady=10)
-
-    def start_cap():
+    def start_cap(self):
         time_set.set()
         camera_start.set()
 
-    start_cap_button = tk.Button(
-        root,
-        text='Start recording',
-        command=start_cap,
-    )
-    start_cap_button.pack(padx=10, pady=10)
-
-    def cap_now():
+    def cap_now(self):
         cap_image.set()
 
-    cap_now_button = tk.Button(
-        root,
-        text='Capture an image',
-        command=cap_now,
-    )
-    cap_now_button.pack(padx=10, pady=10)
-
-    def stop_logging():
+    def stop_logging(self):
         logging_stop.set()
         GPIO.cleanup()
-        root.quit()
-
-    stop_button = tk.Button(
-        root,
-        text='Stop logging',
-        command=stop_logging,
-    )
-    stop_button.pack(padx=10, pady=10)
-
-    root.mainloop()
+        self.root.quit()
 
 if __name__ == '__main__':
     start_time = str(datetime.datetime.now())
     logger_folder = f'logs/{start_time}'
     os.makedirs(logger_folder)
 
-    GPIO.setmode(GPIO.BCM)  # Use BCM pin numbering
+    GPIO.setmode(GPIO.BCM)
     GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
     GPIO.setup(GPS1, GPIO.OUT)
     GPIO.setup(GPS2, GPIO.OUT)
 
-    # Creates a log file and redirects errors to it
-    sys.stderr = open(f'{logger_folder}/err.txt', "w")
+    if SAVE_ERROR:
+        sys.stderr = open(f'{logger_folder}/err.txt', "w")
 
     time_set = threading.Event()
     camera_start = threading.Event()
@@ -362,7 +485,9 @@ if __name__ == '__main__':
     camera_thread.start()
     serial_thread.start()
 
-    ui()
+    root = tk.Tk()
+    app = GNSSLoggerUI(root)
+    root.mainloop()
 
     camera_thread.join()
     serial_thread.join()
